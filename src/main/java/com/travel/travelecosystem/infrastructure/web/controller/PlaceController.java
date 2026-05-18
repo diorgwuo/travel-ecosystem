@@ -62,6 +62,14 @@ public class PlaceController {
         return placeService.findNearby(lat, lon, radius, limit, offset);
     }
 
+    @GetMapping("/search")
+    @Operation(summary = "Поиск мест по названию или описанию")
+    public java.util.List<PlaceResponse> search(
+            @RequestParam String query,
+            @RequestParam(required = false) String category) {
+        return placeService.search(query, category);
+    }
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Создать место")

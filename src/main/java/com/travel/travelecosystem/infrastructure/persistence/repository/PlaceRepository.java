@@ -28,4 +28,23 @@ public interface PlaceRepository extends JpaRepository<PlaceEntity, Long> {
             @Param("radiusMeters") double radiusMeters);
 
     List<PlaceEntity> findByIdIn(Collection<Long> ids);
+
+    @Query(
+            value = "SELECT * FROM places " +
+                    "WHERE name ILIKE CONCAT('%', :query, '%') " +
+                    "OR description ILIKE CONCAT('%', :query, '%')",
+            nativeQuery = true
+    )
+    List<PlaceEntity> searchByNameOrDescription(@Param("query") String query);
+
+    @Query(
+            value = "SELECT * FROM places " +
+                    "WHERE (name ILIKE CONCAT('%', :query, '%') " +
+                    "OR description ILIKE CONCAT('%', :query, '%')) " +
+                    "AND LOWER(category) = LOWER(:category)",
+            nativeQuery = true
+    )
+    List<PlaceEntity> searchByNameOrDescriptionAndCategory(
+            @Param("query") String query,
+            @Param("category") String category);
 }

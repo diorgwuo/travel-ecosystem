@@ -6,6 +6,7 @@ import com.travel.travelecosystem.infrastructure.security.JwtService;
 import com.travel.travelecosystem.infrastructure.web.auth.dto.AuthResponse;
 import com.travel.travelecosystem.infrastructure.web.auth.dto.LoginRequest;
 import com.travel.travelecosystem.infrastructure.web.auth.dto.RegisterRequest;
+import com.travel.travelecosystem.infrastructure.web.auth.dto.UserProfileResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -60,6 +61,23 @@ public class AuthService {
         }
 
         return buildAuthResponse(user);
+    }
+
+    @Transactional(readOnly = true)
+    public UserProfileResponse getProfile(Long userId) {
+        UserEntity user = userJpaRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        return new UserProfileResponse(
+                user.getId(),
+                user.getEmail(),
+                user.getFirstName(),
+                user.getLastName(),
+                user.getRole().name(),
+                user.getStatus().name(),
+                user.getCreatedAt(),
+                user.getUpdatedAt()
+        );
     }
 
     private AuthResponse buildAuthResponse(UserEntity user) {

@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -68,6 +69,40 @@ public class PlaceService {
         int to = (int) Math.min(offset + limit, total);
         List<PlaceResponse> slice = ordered.subList(from, to).stream().map(this::convertToDto).toList();
         return new PlaceListResponse(slice, limit, offset, total);
+    }
+
+    @Transactional(readOnly = true)
+    public List<PlaceResponse> search(String query, String category) {
+        String normalizedQuery = query == null ? "" : query.trim();
+        if (normalizedQuery.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Query must not be blank");
+        }
+
+        List<PlaceEntity> entities;
+        if (category == null || category.isBlank()) {
+            entities = placeRepository.searchByNameOrDescription(normalizedQuery);
+        } else {
+            String normalizedCategory = normalizeCategory(category);
+            entities = placeRepository.searchByNameOrDescriptionAndCategory(normalizedQuery, normalizedCategory);
+        }
+
+        return entities.stream().map(this::convertToDto).toList();
+    }
+
+    private String normalizeCategory(String category) {
+        String normalizedCategory = category.trim();
+        if (normalizedCategory.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Category must not be blank");
+        }
+
+        String upperCategory = normalizedCategory.toUpperCase(Locale.ROOT);
+        if ("ATTRACTION".equals(upperCategory) || "RESTAURANT".equals(upperCategory)) {
+            return upperCategory;
+        }
+
+        throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Category must be one of: attraction, restaurant");
     }
 
     public PlaceResponse convertToDto(PlaceEntity entity) {
