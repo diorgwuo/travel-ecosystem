@@ -1,6 +1,5 @@
 package com.travel.travelecosystem.infrastructure.web.place.dto;
 
-import com.travel.travelecosystem.infrastructure.persistence.entity.PlaceCategory;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -15,7 +14,7 @@ public class PlaceResponse {
     private Long id;
     private String name;
     private String description;
-    private PlaceCategory category;
+    private String category;
     private String address;
     private Double latitude;
     private Double longitude;

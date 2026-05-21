@@ -1,6 +1,5 @@
 package com.travel.travelecosystem.domain.service;
 
-import com.travel.travelecosystem.infrastructure.persistence.entity.PlaceCategory;
 import com.travel.travelecosystem.infrastructure.persistence.entity.PlaceEntity;
 import com.travel.travelecosystem.infrastructure.persistence.repository.PlaceRepository;
 import com.travel.travelecosystem.infrastructure.web.place.dto.PlaceListResponse;
@@ -19,7 +18,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -33,9 +31,17 @@ public class PlaceService {
     private final PlaceRepository placeRepository;
 
     @Transactional(readOnly = true)
-    public PlaceListResponse getByCategory(PlaceCategory category, int limit, long offset) {
+    public PlaceListResponse getByCategory(String category, int limit, long offset) {
         int page = (int) (offset / limit);
         Page<PlaceEntity> pageResult = placeRepository.findByCategory(category, PageRequest.of(page, limit));
+        List<PlaceResponse> items = pageResult.getContent().stream().map(this::convertToDto).toList();
+        return new PlaceListResponse(items, limit, offset, pageResult.getTotalElements());
+    }
+
+    @Transactional(readOnly = true)
+    public PlaceListResponse getAllPlaces(int limit, long offset) {
+        int page = (int) (offset / limit);
+        Page<PlaceEntity> pageResult = placeRepository.findAll(PageRequest.of(page, limit));
         List<PlaceResponse> items = pageResult.getContent().stream().map(this::convertToDto).toList();
         return new PlaceListResponse(items, limit, offset, pageResult.getTotalElements());
     }
@@ -72,7 +78,7 @@ public class PlaceService {
     }
 
     @Transactional(readOnly = true)
-    public List<PlaceResponse> search(String query, String category) {
+    public PlaceListResponse search(String query, String category, int limit, long offset) {
         String normalizedQuery = query == null ? "" : query.trim();
         if (normalizedQuery.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Query must not be blank");
@@ -82,27 +88,14 @@ public class PlaceService {
         if (category == null || category.isBlank()) {
             entities = placeRepository.searchByNameOrDescription(normalizedQuery);
         } else {
-            String normalizedCategory = normalizeCategory(category);
-            entities = placeRepository.searchByNameOrDescriptionAndCategory(normalizedQuery, normalizedCategory);
+            entities = placeRepository.searchByNameOrDescriptionAndCategory(normalizedQuery, category.trim());
         }
 
-        return entities.stream().map(this::convertToDto).toList();
-    }
-
-    private String normalizeCategory(String category) {
-        String normalizedCategory = category.trim();
-        if (normalizedCategory.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Category must not be blank");
-        }
-
-        String upperCategory = normalizedCategory.toUpperCase(Locale.ROOT);
-        if ("ATTRACTION".equals(upperCategory) || "RESTAURANT".equals(upperCategory)) {
-            return upperCategory;
-        }
-
-        throw new ResponseStatusException(
-                HttpStatus.BAD_REQUEST,
-                "Category must be one of: attraction, restaurant");
+        long total = entities.size();
+        int from = (int) Math.min(offset, total);
+        int to = (int) Math.min(offset + limit, total);
+        List<PlaceResponse> items = entities.subList(from, to).stream().map(this::convertToDto).toList();
+        return new PlaceListResponse(items, limit, offset, total);
     }
 
     public PlaceResponse convertToDto(PlaceEntity entity) {

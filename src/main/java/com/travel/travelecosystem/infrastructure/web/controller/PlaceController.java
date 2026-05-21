@@ -1,7 +1,6 @@
 package com.travel.travelecosystem.infrastructure.web.controller;
 
 import com.travel.travelecosystem.domain.service.PlaceService;
-import com.travel.travelecosystem.infrastructure.persistence.entity.PlaceCategory;
 import com.travel.travelecosystem.infrastructure.web.place.dto.PlaceListResponse;
 import com.travel.travelecosystem.infrastructure.web.place.dto.PlaceRequest;
 import com.travel.travelecosystem.infrastructure.web.place.dto.PlaceResponse;
@@ -26,7 +25,7 @@ public class PlaceController {
     public PlaceListResponse attractions(
             @RequestParam(defaultValue = "20") int limit,
             @RequestParam(defaultValue = "0") long offset) {
-        return placeService.getByCategory(PlaceCategory.ATTRACTION, limit, offset);
+        return placeService.getByCategory("ATTRACTION", limit, offset);
     }
 
     @GetMapping("/restaurants")
@@ -34,7 +33,7 @@ public class PlaceController {
     public PlaceListResponse restaurants(
             @RequestParam(defaultValue = "20") int limit,
             @RequestParam(defaultValue = "0") long offset) {
-        return placeService.getByCategory(PlaceCategory.RESTAURANT, limit, offset);
+        return placeService.getByCategory("RESTAURANT", limit, offset);
     }
 
     @GetMapping("/museums")
@@ -42,7 +41,15 @@ public class PlaceController {
     public PlaceListResponse museums(
             @RequestParam(defaultValue = "20") int limit,
             @RequestParam(defaultValue = "0") long offset) {
-        return placeService.getByCategory(PlaceCategory.MUSEUM, limit, offset);
+        return placeService.getByCategory("MUSEUM", limit, offset);
+    }
+
+    @GetMapping("/all")
+    @Operation(summary = "Все места без фильтра по категории")
+    public PlaceListResponse getAllPlaces(
+            @RequestParam(defaultValue = "20") int limit,
+            @RequestParam(defaultValue = "0") long offset) {
+        return placeService.getAllPlaces(limit, offset);
     }
 
     @GetMapping("/{id}")
@@ -64,10 +71,12 @@ public class PlaceController {
 
     @GetMapping("/search")
     @Operation(summary = "Поиск мест по названию или описанию")
-    public java.util.List<PlaceResponse> search(
+    public PlaceListResponse search(
             @RequestParam String query,
-            @RequestParam(required = false) String category) {
-        return placeService.search(query, category);
+            @RequestParam(required = false) String category,
+            @RequestParam(defaultValue = "20") int limit,
+            @RequestParam(defaultValue = "0") long offset) {
+        return placeService.search(query, category, limit, offset);
     }
 
     @PostMapping

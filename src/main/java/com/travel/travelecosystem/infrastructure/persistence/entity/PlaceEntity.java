@@ -29,9 +29,8 @@ public class PlaceEntity {
     @Column(columnDefinition = "text")
     private String description;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 32)
-    private PlaceCategory category;
+    @Column(nullable = false, length = 64)
+    private String category;
 
     private String address;
 

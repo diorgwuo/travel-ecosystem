@@ -1,6 +1,5 @@
 package com.travel.travelecosystem.infrastructure.web.place.dto;
 
-import com.travel.travelecosystem.infrastructure.persistence.entity.PlaceCategory;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -18,8 +17,8 @@ public class PlaceRequest {
     @Size(max = 4000)
     private String description;
 
-    @NotNull
-    private PlaceCategory category;
+    @NotBlank
+    private String category;
 
     @Size(max = 500)
     private String address;

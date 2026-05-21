@@ -1,6 +1,5 @@
 package com.travel.travelecosystem.infrastructure.persistence.repository;
 
-import com.travel.travelecosystem.infrastructure.persistence.entity.PlaceCategory;
 import com.travel.travelecosystem.infrastructure.persistence.entity.PlaceEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -13,7 +12,7 @@ import java.util.List;
 
 public interface PlaceRepository extends JpaRepository<PlaceEntity, Long> {
 
-    Page<PlaceEntity> findByCategory(PlaceCategory category, Pageable pageable);
+    Page<PlaceEntity> findByCategory(String category, Pageable pageable);
 
     @Query(
             value = "SELECT id FROM places WHERE ST_DWithin("
