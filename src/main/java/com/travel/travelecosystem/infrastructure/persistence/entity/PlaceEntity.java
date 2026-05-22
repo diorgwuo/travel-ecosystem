@@ -43,6 +43,10 @@ public class PlaceEntity {
     @Column(precision = 3, scale = 2)
     private BigDecimal rating;
 
+    @Column(name = "favorites_count")
+    @Builder.Default
+    private Long favoritesCount = 0L;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

@@ -58,6 +58,18 @@ public class ExcursionEntity {
     @Column(name = "operator_id", nullable = false)
     private Long operatorId;
 
+    @Column(name = "views_count")
+    @Builder.Default
+    private Long viewsCount = 0L;
+
+    @Column(name = "favorites_count")
+    @Builder.Default
+    private Long favoritesCount = 0L;
+
+    @Column(name = "bookings_count")
+    @Builder.Default
+    private Long bookingsCount = 0L;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "operator_id", insertable = false, updatable = false)
     private UserEntity operator;
@@ -69,4 +81,8 @@ public class ExcursionEntity {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    public void incrementViewsCount() {
+        this.viewsCount = (this.viewsCount == null ? 0 : this.viewsCount) + 1;
+    }
 }

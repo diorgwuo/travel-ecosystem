@@ -45,9 +45,16 @@ public class ExcursionController {
     @GetMapping("/{id}")
     @Operation(summary = "Экскурсия по id (черновики — только владелец или админ)")
     public ExcursionResponse getById(
-            @Parameter(hidden = true) @RequestAttribute("userId") Long userId,
+            @Parameter(hidden = true) @RequestAttribute(value = "userId", required = false) Long userId,
             @PathVariable Long id) {
         return excursionService.getById(id, userId);
+    }
+
+    @PostMapping("/{id}/view")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Увеличить счётчик просмотров")
+    public void registerView(@PathVariable Long id) {
+        excursionService.incrementViews(id);
     }
 
     @PostMapping

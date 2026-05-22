@@ -62,20 +62,35 @@ public class ExcursionService {
         return toListResponse(result, limit, offset);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public ExcursionResponse getById(Long id, Long viewerUserId) {
         ExcursionEntity entity = excursionRepository.findByIdWithOperator(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Excursion not found"));
-        if (entity.isPublished()) {
-            return toResponse(entity);
+        if (!entity.isPublished()) {
+            if (viewerUserId == null) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Excursion not found");
+            }
+            UserEntity viewer = userJpaRepository.findById(viewerUserId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
+            if (viewer.getRole() != UserEntity.UserRole.ROLE_ADMIN
+                    && !entity.getOperatorId().equals(viewerUserId)) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Excursion not found");
+            }
         }
-        UserEntity viewer = userJpaRepository.findById(viewerUserId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
-        if (viewer.getRole() == UserEntity.UserRole.ROLE_ADMIN
-                || entity.getOperatorId().equals(viewerUserId)) {
-            return toResponse(entity);
+        entity.incrementViewsCount();
+        excursionRepository.save(entity);
+        return toResponse(entity);
+    }
+
+    @Transactional
+    public void incrementViews(Long id) {
+        ExcursionEntity entity = excursionRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Excursion not found"));
+        if (!entity.isPublished()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Excursion not found");
         }
-        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Excursion not found");
+        entity.incrementViewsCount();
+        excursionRepository.save(entity);
     }
 
     @Transactional
