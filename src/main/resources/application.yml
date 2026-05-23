@@ -3,7 +3,7 @@ spring:
     name: travel-ecosystem
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/travel_ecosystem
+    url: travel-postgres
     username: travel_user
     password: travel_password
     driver-class-name: org.postgresql.Driver
@@ -28,6 +28,12 @@ server:
   error:
     include-message: always
     include-binding-errors: always
+  # HTTPS (production) — раскомментировать при наличии keystore:
+  # ssl:
+  #   enabled: true
+  #   key-store: classpath:keystore.p12
+  #   key-store-password: ${KEYSTORE_PASSWORD}
+  #   key-store-type: PKCS12
 
 logging:
   level:

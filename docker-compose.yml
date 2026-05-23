@@ -35,7 +35,7 @@ services:
         condition: service_healthy
 
   frontend:
-    build: .
+    build: ../VKR
     container_name: travel-frontend
     restart: unless-stopped
     ports:
