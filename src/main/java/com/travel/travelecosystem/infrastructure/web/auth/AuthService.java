@@ -39,7 +39,7 @@ public class AuthService {
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .firstName(request.getFirstName().trim())
                 .lastName(request.getLastName().trim())
-                .role(UserEntity.UserRole.ROLE_ADMIN)
+                .role(request.getRole().toEntityRole())
                 .status(UserEntity.UserStatus.ACTIVE)
                 .build();
 

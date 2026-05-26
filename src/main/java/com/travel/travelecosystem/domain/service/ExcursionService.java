@@ -31,6 +31,7 @@ public class ExcursionService {
 
     private final ExcursionRepository excursionRepository;
     private final UserJpaRepository userJpaRepository;
+    private final NotificationService notificationService;
 
     @Transactional(readOnly = true)
     public ExcursionListResponse getAll(
@@ -123,7 +124,10 @@ public class ExcursionService {
     public ExcursionResponse update(Long id, Long userId, ExcursionRequest request) {
         ExcursionEntity entity = excursionRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Excursion not found"));
+        boolean wasPublished = entity.isPublished();
         assertOwnerOrAdmin(userId, entity);
+        UserEntity actor = userJpaRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
         validateDates(request);
 
         Point meeting = GEOMETRY_FACTORY.createPoint(new Coordinate(request.getLongitude(), request.getLatitude()));
@@ -141,6 +145,21 @@ public class ExcursionService {
         entity.setPublished(request.isPublished());
 
         excursionRepository.save(entity);
+        if (actor.getRole() == UserEntity.UserRole.ROLE_ADMIN && wasPublished != request.isPublished()) {
+            if (request.isPublished()) {
+                notificationService.createNotification(
+                        entity.getOperatorId(),
+                        "EXCURSION_PUBLISHED",
+                        "Экскурсия опубликована",
+                        "Ваша экскурсия '" + entity.getTitle() + "' опубликована администратором");
+            } else {
+                notificationService.createNotification(
+                        entity.getOperatorId(),
+                        "EXCURSION_REJECTED",
+                        "Экскурсия отклонена",
+                        "Ваша экскурсия '" + entity.getTitle() + "' отклонена администратором");
+            }
+        }
         return excursionRepository.findByIdWithOperator(id).map(this::toResponse).orElseThrow();
     }
 
@@ -157,8 +176,48 @@ public class ExcursionService {
         ExcursionEntity entity = excursionRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Excursion not found"));
         assertOwnerOrAdmin(userId, entity);
+        UserEntity actor = userJpaRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
+        boolean wasPublished = entity.isPublished();
         entity.setPublished(true);
         excursionRepository.save(entity);
+        if (!wasPublished && actor.getRole() == UserEntity.UserRole.ROLE_ADMIN) {
+            notificationService.createNotification(
+                    entity.getOperatorId(),
+                    "EXCURSION_PUBLISHED",
+                    "Экскурсия опубликована",
+                    "Ваша экскурсия '" + entity.getTitle() + "' опубликована администратором");
+        }
+        return excursionRepository.findByIdWithOperator(id).map(this::toResponse).orElseThrow();
+    }
+
+    @Transactional
+    public ExcursionResponse setPublicationStatusByAdmin(Long id, Long adminUserId, boolean publish) {
+        ExcursionEntity entity = excursionRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Excursion not found"));
+        UserEntity actor = userJpaRepository.findById(adminUserId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
+        if (actor.getRole() != UserEntity.UserRole.ROLE_ADMIN) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Admin access required");
+        }
+        boolean wasPublished = entity.isPublished();
+        entity.setPublished(publish);
+        excursionRepository.save(entity);
+        if (wasPublished != publish) {
+            if (publish) {
+                notificationService.createNotification(
+                        entity.getOperatorId(),
+                        "EXCURSION_PUBLISHED",
+                        "Экскурсия опубликована",
+                        "Ваша экскурсия '" + entity.getTitle() + "' опубликована администратором");
+            } else {
+                notificationService.createNotification(
+                        entity.getOperatorId(),
+                        "EXCURSION_REJECTED",
+                        "Экскурсия отклонена",
+                        "Ваша экскурсия '" + entity.getTitle() + "' отклонена администратором");
+            }
+        }
         return excursionRepository.findByIdWithOperator(id).map(this::toResponse).orElseThrow();
     }
 

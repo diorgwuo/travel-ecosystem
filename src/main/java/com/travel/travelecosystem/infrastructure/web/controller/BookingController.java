@@ -47,4 +47,12 @@ public class BookingController {
             @Valid @RequestBody BookingStatusRequest request) {
         return bookingService.updateBookingStatus(id, userId, request.getStatus());
     }
+
+    @PatchMapping("/{id}/cancel")
+    @Operation(summary = "Отменить бронирование (турист)")
+    public BookingResponse cancelByTourist(
+            @Parameter(hidden = true) @RequestAttribute("userId") Long userId,
+            @PathVariable Long id) {
+        return bookingService.cancelByTourist(id, userId);
+    }
 }

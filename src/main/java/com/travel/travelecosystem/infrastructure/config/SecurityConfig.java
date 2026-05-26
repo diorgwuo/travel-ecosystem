@@ -62,6 +62,7 @@ public class SecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
+
         return new BCryptPasswordEncoder();
     }
 
@@ -73,19 +74,18 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-//                        .requestMatchers("/api/auth/register", "/api/auth/login").permitAll()
-//                        .requestMatchers("/api/places/**").permitAll()
-//                        .requestMatchers(HttpMethod.GET, "/api/excursions").permitAll()
-//                        .requestMatchers(HttpMethod.GET, "/api/excursions/{id}").permitAll()
-//                        .requestMatchers(HttpMethod.POST, "/api/excursions/{id}/view").permitAll()
-//                        .requestMatchers(
-//                                "/swagger-ui.html",
-//                                "/swagger-ui/**",
-//                                "/api-docs/**",
-//                                "/v3/api-docs/**")
-                                .anyRequest()
-                                .permitAll()
-//                        .authenticated()
+                        .requestMatchers("/api/auth/register", "/api/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/places/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/routes/build-options").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/excursions", "/api/excursions/{id}").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/excursions/{id}/view").permitAll()
+                        .requestMatchers(
+                                "/swagger-ui.html",
+                                "/swagger-ui/**",
+                                "/api-docs/**",
+                                "/v3/api-docs/**")
+                        .permitAll()
+                        .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authenticationProvider)

@@ -1,11 +1,14 @@
 package com.travel.travelecosystem.infrastructure.web.place.dto;
 
+import com.travel.travelecosystem.domain.model.PlaceTheme;
+import com.travel.travelecosystem.domain.model.PlaceTimeOfDay;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.util.Set;
 
 @Data
 public class PlaceRequest {
@@ -33,4 +36,8 @@ public class PlaceRequest {
     private String imageUrl;
 
     private BigDecimal rating;
+
+    private Set<PlaceTimeOfDay> timeOfDayTags;
+
+    private Set<PlaceTheme> themeTags;
 }

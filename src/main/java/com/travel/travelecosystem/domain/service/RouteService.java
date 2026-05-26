@@ -1,10 +1,12 @@
 package com.travel.travelecosystem.domain.service;
 
+import com.travel.travelecosystem.domain.model.PlaceTheme;
 import com.travel.travelecosystem.infrastructure.persistence.entity.PlaceEntity;
 import com.travel.travelecosystem.infrastructure.persistence.entity.RouteEntity;
 import com.travel.travelecosystem.infrastructure.persistence.entity.RoutePointEntity;
 import com.travel.travelecosystem.infrastructure.persistence.repository.PlaceRepository;
 import com.travel.travelecosystem.infrastructure.persistence.repository.RouteRepository;
+import com.travel.travelecosystem.infrastructure.web.route.dto.RouteAutoBuildRequest;
 import com.travel.travelecosystem.infrastructure.web.route.dto.RouteListResponse;
 import com.travel.travelecosystem.infrastructure.web.route.dto.RoutePointResponse;
 import com.travel.travelecosystem.infrastructure.web.route.dto.RouteRequest;
@@ -48,6 +50,32 @@ public class RouteService {
         RouteEntity route = routeRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Route not found"));
         return toResponse(route);
+    }
+
+    @Transactional
+    public RouteResponse autoBuildRoute(Long userId, RouteAutoBuildRequest request) {
+        int stopCount = request.getPace().getStopCount();
+        Set<PlaceTheme> themes = parseThemes(request.getThemes());
+
+        List<PlaceEntity> candidates = new ArrayList<>(
+                placeRepository.findPublishedByTimeOfDayAndThemes(request.getTimeOfDay(), themes));
+
+        if (candidates.size() < stopCount) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Недостаточно мест для построения маршрута");
+        }
+
+        Collections.shuffle(candidates);
+        List<Long> placeIds = candidates.stream()
+                .limit(stopCount)
+                .map(PlaceEntity::getId)
+                .toList();
+
+        RouteRequest routeRequest = new RouteRequest();
+        routeRequest.setTitle(resolveAutoBuildTitle(request));
+        routeRequest.setPlaceIds(placeIds);
+        return create(userId, routeRequest);
     }
 
     @Transactional
@@ -109,6 +137,34 @@ public class RouteService {
         long stopMinutes = orderedPoints == null ? 0 : (long) orderedPoints.size() * MINUTES_PER_STOP;
         long total = travelMinutes + stopMinutes;
         return Math.max(total, 1L);
+    }
+
+    private static Set<PlaceTheme> parseThemes(List<String> themes) {
+        Set<PlaceTheme> parsed = new LinkedHashSet<>();
+        for (String theme : themes) {
+            String normalized = theme.trim().toUpperCase();
+            if (normalized.isEmpty()) {
+                continue;
+            }
+            try {
+                parsed.add(PlaceTheme.valueOf(normalized));
+            } catch (IllegalArgumentException e) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Неизвестная тема: " + theme);
+            }
+        }
+        if (parsed.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "themes must not be empty");
+        }
+        return parsed;
+    }
+
+    private static String resolveAutoBuildTitle(RouteAutoBuildRequest request) {
+        if (request.getTitle() != null && !request.getTitle().isBlank()) {
+            return request.getTitle().trim();
+        }
+        return "Маршрут: " + String.join(", ", request.getThemes());
     }
 
     private void assertAllPlacesExist(List<Long> placeIds) {

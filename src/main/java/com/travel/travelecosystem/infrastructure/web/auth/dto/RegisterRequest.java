@@ -2,6 +2,7 @@ package com.travel.travelecosystem.infrastructure.web.auth.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -28,4 +29,8 @@ public class RegisterRequest {
     @NotBlank(message = "Last name is required")
     @Size(max = 100, message = "Last name must be up to 100 characters")
     private String lastName;
+
+    /** TRAVELER (турист) или OPERATOR (туроператор). Администратор через регистрацию недоступен. */
+    @NotNull(message = "Role is required")
+    private RegisterRole role;
 }

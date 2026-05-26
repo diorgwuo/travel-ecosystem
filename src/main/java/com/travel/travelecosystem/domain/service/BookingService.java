@@ -3,8 +3,10 @@ package com.travel.travelecosystem.domain.service;
 import com.travel.travelecosystem.infrastructure.persistence.entity.BookingEntity;
 import com.travel.travelecosystem.infrastructure.persistence.entity.BookingStatus;
 import com.travel.travelecosystem.infrastructure.persistence.entity.ExcursionEntity;
+import com.travel.travelecosystem.infrastructure.persistence.entity.UserEntity;
 import com.travel.travelecosystem.infrastructure.persistence.repository.BookingRepository;
 import com.travel.travelecosystem.infrastructure.persistence.repository.ExcursionRepository;
+import com.travel.travelecosystem.infrastructure.persistence.repository.UserJpaRepository;
 import com.travel.travelecosystem.infrastructure.web.booking.dto.BookingListResponse;
 import com.travel.travelecosystem.infrastructure.web.booking.dto.BookingRequest;
 import com.travel.travelecosystem.infrastructure.web.booking.dto.BookingResponse;
@@ -26,6 +28,7 @@ public class BookingService {
 
     private final BookingRepository bookingRepository;
     private final ExcursionRepository excursionRepository;
+    private final UserJpaRepository userJpaRepository;
     private final NotificationService notificationService;
 
     @Transactional
@@ -49,12 +52,15 @@ public class BookingService {
                 .status(BookingStatus.PENDING)
                 .build();
         BookingEntity saved = bookingRepository.save(booking);
+        UserEntity tourist = userJpaRepository.findById(touristId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tourist not found"));
+        String touristName = formatUserName(tourist);
 
         notificationService.createNotification(
                 excursion.getOperatorId(),
-                "BOOKING_CREATED",
-                "Новое бронирование",
-                "Новая заявка на экскурсию \"" + excursion.getTitle() + "\" (" + request.getParticipantsCount() + " чел.)");
+                "NEW_BOOKING",
+                "Новая заявка на бронирование",
+                "Турист " + touristName + " забронировал экскурсию '" + excursion.getTitle() + "'");
 
         return toResponse(saved, excursion);
     }
@@ -112,7 +118,7 @@ public class BookingService {
                     booking.getTouristId(),
                     "BOOKING_CONFIRMED",
                     "Бронирование подтверждено",
-                    "Ваше бронирование на \"" + excursion.getTitle() + "\" подтверждено");
+                    "Ваше бронирование экскурсии '" + excursion.getTitle() + "' подтверждено");
         } else if (newStatus == BookingStatus.CANCELLED) {
             if (oldStatus == BookingStatus.CONFIRMED) {
                 adjustBookingsCount(excursion, -1);
@@ -120,14 +126,43 @@ public class BookingService {
             booking.setStatus(BookingStatus.CANCELLED);
             notificationService.createNotification(
                     booking.getTouristId(),
-                    "BOOKING_CANCELLED",
-                    "Бронирование отменено",
-                    "Ваше бронирование на \"" + excursion.getTitle() + "\" отменено");
+                    "BOOKING_REJECTED",
+                    "Бронирование отклонено",
+                    "Ваше бронирование экскурсии '" + excursion.getTitle() + "' отклонено");
         } else {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Operators can only set CONFIRMED or CANCELLED status");
         }
 
         BookingEntity saved = bookingRepository.save(booking);
+        return toResponse(saved, excursion);
+    }
+
+    @Transactional
+    public BookingResponse cancelByTourist(Long bookingId, Long touristId) {
+        BookingEntity booking = bookingRepository.findByIdAndTouristId(bookingId, touristId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found"));
+        ExcursionEntity excursion = excursionRepository.findById(booking.getExcursionId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Excursion not found"));
+
+        if (booking.getStatus() == BookingStatus.CANCELLED) {
+            return toResponse(booking, excursion);
+        }
+
+        if (booking.getStatus() == BookingStatus.CONFIRMED) {
+            adjustBookingsCount(excursion, -1);
+        }
+        booking.setStatus(BookingStatus.CANCELLED);
+        BookingEntity saved = bookingRepository.save(booking);
+
+        UserEntity tourist = userJpaRepository.findById(touristId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tourist not found"));
+        String touristName = formatUserName(tourist);
+        notificationService.createNotification(
+                excursion.getOperatorId(),
+                "BOOKING_CANCELLED_BY_TOURIST",
+                "Бронирование отменено туристом",
+                "Турист " + touristName + " отменил бронирование экскурсии '" + excursion.getTitle() + "'");
+
         return toResponse(saved, excursion);
     }
 
@@ -159,5 +194,15 @@ public class BookingService {
                 .status(booking.getStatus())
                 .createdAt(booking.getCreatedAt())
                 .build();
+    }
+
+    private static String formatUserName(UserEntity user) {
+        String first = user.getFirstName() != null ? user.getFirstName().trim() : "";
+        String last = user.getLastName() != null ? user.getLastName().trim() : "";
+        String fullName = (first + " " + last).trim();
+        if (!fullName.isEmpty()) {
+            return fullName;
+        }
+        return user.getEmail();
     }
 }

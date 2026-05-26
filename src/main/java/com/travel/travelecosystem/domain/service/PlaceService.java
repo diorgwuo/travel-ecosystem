@@ -17,8 +17,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -33,7 +35,8 @@ public class PlaceService {
     @Transactional(readOnly = true)
     public PlaceListResponse getByCategory(String category, int limit, long offset) {
         int page = (int) (offset / limit);
-        Page<PlaceEntity> pageResult = placeRepository.findByCategory(category, PageRequest.of(page, limit));
+        Page<PlaceEntity> pageResult =
+                placeRepository.findByCategoryAndPublishedTrue(category, PageRequest.of(page, limit));
         List<PlaceResponse> items = pageResult.getContent().stream().map(this::convertToDto).toList();
         return new PlaceListResponse(items, limit, offset, pageResult.getTotalElements());
     }
@@ -41,14 +44,14 @@ public class PlaceService {
     @Transactional(readOnly = true)
     public PlaceListResponse getAllPlaces(int limit, long offset) {
         int page = (int) (offset / limit);
-        Page<PlaceEntity> pageResult = placeRepository.findAll(PageRequest.of(page, limit));
+        Page<PlaceEntity> pageResult = placeRepository.findByPublishedTrue(PageRequest.of(page, limit));
         List<PlaceResponse> items = pageResult.getContent().stream().map(this::convertToDto).toList();
         return new PlaceListResponse(items, limit, offset, pageResult.getTotalElements());
     }
 
     @Transactional(readOnly = true)
     public PlaceResponse getById(Long id) {
-        PlaceEntity entity = placeRepository.findById(id)
+        PlaceEntity entity = placeRepository.findByIdAndPublishedTrue(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Place not found"));
         return convertToDto(entity);
     }
@@ -68,7 +71,10 @@ public class PlaceService {
         }
         List<PlaceEntity> all = placeRepository.findByIdIn(ids);
         Map<Long, PlaceEntity> byId = all.stream().collect(Collectors.toMap(PlaceEntity::getId, e -> e));
-        List<PlaceEntity> ordered = ids.stream().map(byId::get).filter(e -> e != null).toList();
+        List<PlaceEntity> ordered = ids.stream()
+                .map(byId::get)
+                .filter(e -> e != null && e.isPublished())
+                .toList();
 
         long total = ordered.size();
         int from = (int) Math.min(offset, total);
@@ -111,14 +117,25 @@ public class PlaceService {
                 lat,
                 lon,
                 entity.getImageUrl(),
-                entity.getRating()
+                entity.getRating(),
+                copyTagSet(entity.getTimeOfDayTags()),
+                copyTagSet(entity.getThemeTags())
         );
+    }
+
+    public void applyTagsFromRequest(PlaceEntity entity, PlaceRequest request) {
+        entity.setTimeOfDayTags(copyTagSet(request.getTimeOfDayTags()));
+        entity.setThemeTags(copyTagSet(request.getThemeTags()));
+    }
+
+    private static <T> Set<T> copyTagSet(Set<T> source) {
+        return source == null ? new HashSet<>() : new HashSet<>(source);
     }
 
     public PlaceEntity convertToEntity(PlaceRequest request) {
         Point point = GEOMETRY_FACTORY.createPoint(new Coordinate(request.getLongitude(), request.getLatitude()));
         point.setSRID(4326);
-        return PlaceEntity.builder()
+        PlaceEntity entity = PlaceEntity.builder()
                 .name(request.getName())
                 .description(request.getDescription())
                 .category(request.getCategory())
@@ -126,6 +143,9 @@ public class PlaceService {
                 .location(point)
                 .imageUrl(request.getImageUrl())
                 .rating(request.getRating())
+                .published(true)
                 .build();
+        applyTagsFromRequest(entity, request);
+        return entity;
     }
 }

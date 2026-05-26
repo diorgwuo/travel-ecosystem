@@ -4,6 +4,7 @@ import com.travel.travelecosystem.domain.service.PlaceService;
 import com.travel.travelecosystem.infrastructure.web.place.dto.PlaceListResponse;
 import com.travel.travelecosystem.infrastructure.web.place.dto.PlaceRequest;
 import com.travel.travelecosystem.infrastructure.web.place.dto.PlaceResponse;
+import com.travel.travelecosystem.infrastructure.web.place.dto.PlaceTagCatalogResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -50,6 +51,12 @@ public class PlaceController {
             @RequestParam(defaultValue = "20") int limit,
             @RequestParam(defaultValue = "0") long offset) {
         return placeService.getAllPlaces(limit, offset);
+    }
+
+    @GetMapping("/tags")
+    @Operation(summary = "Справочник тегов мест (время суток и тематика)")
+    public PlaceTagCatalogResponse tagCatalog() {
+        return PlaceTagCatalogResponse.defaults();
     }
 
     @GetMapping("/{id}")

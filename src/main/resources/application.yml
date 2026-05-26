@@ -46,3 +46,11 @@ springdoc:
     path: /api-docs
   swagger-ui:
     path: /swagger-ui.html
+
+app:
+  admin:
+    enabled: true
+    email: admin@travel.local
+    password: Admin123!
+    first-name: System
+    last-name: Administrator
