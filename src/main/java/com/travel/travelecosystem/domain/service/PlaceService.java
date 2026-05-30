@@ -6,10 +6,6 @@ import com.travel.travelecosystem.infrastructure.web.place.dto.PlaceListResponse
 import com.travel.travelecosystem.infrastructure.web.place.dto.PlaceRequest;
 import com.travel.travelecosystem.infrastructure.web.place.dto.PlaceResponse;
 import lombok.RequiredArgsConstructor;
-import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.GeometryFactory;
-import org.locationtech.jts.geom.Point;
-import org.locationtech.jts.geom.PrecisionModel;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
@@ -17,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -27,8 +24,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class PlaceService {
 
-    private static final GeometryFactory GEOMETRY_FACTORY =
-            new GeometryFactory(new PrecisionModel(), 4326);
+    private static final double EARTH_RADIUS_METERS = 6_371_000.0;
 
     private final PlaceRepository placeRepository;
 
@@ -65,16 +61,16 @@ public class PlaceService {
 
     @Transactional(readOnly = true)
     public PlaceListResponse findNearby(double lat, double lon, double radiusMeters, int limit, long offset) {
-        List<Long> ids = placeRepository.findNearbyPlaceIds(lat, lon, radiusMeters);
-        if (ids.isEmpty()) {
+        List<PlaceEntity> ordered = placeRepository.findByPublishedTrue().stream()
+                .filter(p -> p.getLatitude() != null && p.getLongitude() != null)
+                .filter(p -> haversineMeters(lat, lon, p.getLatitude(), p.getLongitude()) <= radiusMeters)
+                .sorted(Comparator.comparingDouble(
+                        p -> haversineMeters(lat, lon, p.getLatitude(), p.getLongitude())))
+                .toList();
+
+        if (ordered.isEmpty()) {
             return new PlaceListResponse(List.of(), limit, offset, 0);
         }
-        List<PlaceEntity> all = placeRepository.findByIdIn(ids);
-        Map<Long, PlaceEntity> byId = all.stream().collect(Collectors.toMap(PlaceEntity::getId, e -> e));
-        List<PlaceEntity> ordered = ids.stream()
-                .map(byId::get)
-                .filter(e -> e != null && e.isPublished())
-                .toList();
 
         long total = ordered.size();
         int from = (int) Math.min(offset, total);
@@ -105,17 +101,14 @@ public class PlaceService {
     }
 
     public PlaceResponse convertToDto(PlaceEntity entity) {
-        Point loc = entity.getLocation();
-        Double lon = loc != null ? loc.getX() : null;
-        Double lat = loc != null ? loc.getY() : null;
         return new PlaceResponse(
                 entity.getId(),
                 entity.getName(),
                 entity.getDescription(),
                 entity.getCategory(),
                 entity.getAddress(),
-                lat,
-                lon,
+                entity.getLatitude(),
+                entity.getLongitude(),
                 entity.getImageUrl(),
                 entity.getRating(),
                 copyTagSet(entity.getTimeOfDayTags()),
@@ -133,19 +126,31 @@ public class PlaceService {
     }
 
     public PlaceEntity convertToEntity(PlaceRequest request) {
-        Point point = GEOMETRY_FACTORY.createPoint(new Coordinate(request.getLongitude(), request.getLatitude()));
-        point.setSRID(4326);
         PlaceEntity entity = PlaceEntity.builder()
                 .name(request.getName())
                 .description(request.getDescription())
                 .category(request.getCategory())
                 .address(request.getAddress())
-                .location(point)
+                .latitude(request.getLatitude())
+                .longitude(request.getLongitude())
                 .imageUrl(request.getImageUrl())
                 .rating(request.getRating())
                 .published(true)
                 .build();
         applyTagsFromRequest(entity, request);
         return entity;
+    }
+
+    private static double haversineMeters(double lat1, double lon1, double lat2, double lon2) {
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+        double radLat1 = Math.toRadians(lat1);
+        double radLat2 = Math.toRadians(lat2);
+        double sinHalfLat = Math.sin(dLat / 2);
+        double sinHalfLon = Math.sin(dLon / 2);
+        double a = sinHalfLat * sinHalfLat
+                + Math.cos(radLat1) * Math.cos(radLat2) * sinHalfLon * sinHalfLon;
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(Math.max(0.0, 1 - a)));
+        return EARTH_RADIUS_METERS * c;
     }
 }

@@ -20,17 +20,7 @@ public interface PlaceRepository extends JpaRepository<PlaceEntity, Long> {
 
     java.util.Optional<PlaceEntity> findByIdAndPublishedTrue(Long id);
 
-    @Query(
-            value = "SELECT id FROM places WHERE ST_DWithin("
-                    + "CAST(location AS geography), "
-                    + "CAST(ST_SetSRID(ST_MakePoint(:lon, :lat), 4326) AS geography), "
-                    + ":radiusMeters)",
-            nativeQuery = true
-    )
-    List<Long> findNearbyPlaceIds(
-            @Param("lat") double lat,
-            @Param("lon") double lon,
-            @Param("radiusMeters") double radiusMeters);
+    List<PlaceEntity> findByPublishedTrue();
 
     List<PlaceEntity> findByIdIn(Collection<Long> ids);
 

@@ -8,7 +8,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
-import org.locationtech.jts.geom.Point;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -38,8 +37,11 @@ public class PlaceEntity {
 
     private String address;
 
-    @Column(nullable = false, columnDefinition = "geometry(Point,4326)")
-    private Point location;
+    @Column(nullable = false)
+    private Double latitude;
+
+    @Column(nullable = false)
+    private Double longitude;
 
     @Column(name = "image_url")
     private String imageUrl;

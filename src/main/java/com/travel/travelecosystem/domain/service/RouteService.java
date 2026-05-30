@@ -12,7 +12,6 @@ import com.travel.travelecosystem.infrastructure.web.route.dto.RoutePointRespons
 import com.travel.travelecosystem.infrastructure.web.route.dto.RouteRequest;
 import com.travel.travelecosystem.infrastructure.web.route.dto.RouteResponse;
 import lombok.RequiredArgsConstructor;
-import org.locationtech.jts.geom.Point;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
@@ -216,13 +215,8 @@ public class RouteService {
 
     private static RoutePointResponse toPointResponse(RoutePointEntity rp, PlaceEntity place) {
         String name = place != null ? place.getName() : null;
-        Double lat = null;
-        Double lon = null;
-        if (place != null && place.getLocation() != null) {
-            Point loc = place.getLocation();
-            lat = loc.getY();
-            lon = loc.getX();
-        }
+        Double lat = place != null ? place.getLatitude() : null;
+        Double lon = place != null ? place.getLongitude() : null;
         return new RoutePointResponse(rp.getPlaceId(), name, lat, lon, rp.getOrderIndex());
     }
 

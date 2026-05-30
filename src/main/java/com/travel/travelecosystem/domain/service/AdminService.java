@@ -142,7 +142,8 @@ public class AdminService {
         entity.setDescription(changed.getDescription());
         entity.setCategory(changed.getCategory());
         entity.setAddress(changed.getAddress());
-        entity.setLocation(changed.getLocation());
+        entity.setLatitude(changed.getLatitude());
+        entity.setLongitude(changed.getLongitude());
         entity.setImageUrl(changed.getImageUrl());
         entity.setRating(changed.getRating());
         placeService.applyTagsFromRequest(entity, request);

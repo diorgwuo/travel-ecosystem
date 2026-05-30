@@ -8,10 +8,6 @@ import com.travel.travelecosystem.infrastructure.web.excursion.dto.ExcursionList
 import com.travel.travelecosystem.infrastructure.web.excursion.dto.ExcursionRequest;
 import com.travel.travelecosystem.infrastructure.web.excursion.dto.ExcursionResponse;
 import lombok.RequiredArgsConstructor;
-import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.GeometryFactory;
-import org.locationtech.jts.geom.Point;
-import org.locationtech.jts.geom.PrecisionModel;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
@@ -25,9 +21,6 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class ExcursionService {
-
-    private static final GeometryFactory GEOMETRY_FACTORY =
-            new GeometryFactory(new PrecisionModel(), 4326);
 
     private final ExcursionRepository excursionRepository;
     private final UserJpaRepository userJpaRepository;
@@ -97,8 +90,6 @@ public class ExcursionService {
     @Transactional
     public ExcursionResponse create(Long operatorUserId, ExcursionRequest request) {
         validateDates(request);
-        Point meeting = GEOMETRY_FACTORY.createPoint(new Coordinate(request.getLongitude(), request.getLatitude()));
-        meeting.setSRID(4326);
 
         ExcursionEntity entity = ExcursionEntity.builder()
                 .title(request.getTitle())
@@ -107,7 +98,8 @@ public class ExcursionService {
                 .price(request.getPrice())
                 .startDate(request.getStartDate())
                 .endDate(request.getEndDate())
-                .meetingPoint(meeting)
+                .latitude(request.getLatitude())
+                .longitude(request.getLongitude())
                 .meetingAddress(request.getMeetingAddress())
                 .maxParticipants(request.getMaxParticipants())
                 .published(request.isPublished())
@@ -130,16 +122,14 @@ public class ExcursionService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
         validateDates(request);
 
-        Point meeting = GEOMETRY_FACTORY.createPoint(new Coordinate(request.getLongitude(), request.getLatitude()));
-        meeting.setSRID(4326);
-
         entity.setTitle(request.getTitle());
         entity.setDescription(request.getDescription());
         entity.setDuration(request.getDuration());
         entity.setPrice(request.getPrice());
         entity.setStartDate(request.getStartDate());
         entity.setEndDate(request.getEndDate());
-        entity.setMeetingPoint(meeting);
+        entity.setLatitude(request.getLatitude());
+        entity.setLongitude(request.getLongitude());
         entity.setMeetingAddress(request.getMeetingAddress());
         entity.setMaxParticipants(request.getMaxParticipants());
         entity.setPublished(request.isPublished());
@@ -244,9 +234,6 @@ public class ExcursionService {
     }
 
     private ExcursionResponse toResponse(ExcursionEntity entity) {
-        Point mp = entity.getMeetingPoint();
-        Double lat = mp != null ? mp.getY() : null;
-        Double lon = mp != null ? mp.getX() : null;
         String operatorName;
         if (entity.getOperator() != null) {
             operatorName = trimJoin(entity.getOperator().getFirstName(), entity.getOperator().getLastName());
@@ -264,8 +251,8 @@ public class ExcursionService {
                 entity.getStartDate(),
                 entity.getEndDate(),
                 entity.getMeetingAddress(),
-                lat,
-                lon,
+                entity.getLatitude(),
+                entity.getLongitude(),
                 entity.getMaxParticipants(),
                 entity.isPublished(),
                 entity.getOperatorId(),
